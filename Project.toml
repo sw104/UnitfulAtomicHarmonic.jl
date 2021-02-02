@@ -1,0 +1,7 @@
+name = "UnitfulAtomicHarmonic"
+uuid = "10fbbadc-7339-4a1f-b5fa-157ec6747af0"
+authors = ["Sam W <sw104@users.noreply.github.com>"]
+version = "0.1.0"
+
+[deps]
+Unitful = "1986cc42-f94f-5a68-af5c-568840ba703d"
