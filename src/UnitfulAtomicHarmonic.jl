@@ -11,14 +11,22 @@ export ahunit, ahuconvert, ahustrip, initahu;
 
 Finishes the units initialisation by setting the harmonic frequency base unit
 value to `ω` and the mass base unit to `m`. If neither `ω` of `m` have units,
-`ω` is assumed to be in units of `rad Hz` and `m` is assumed to be in units of
+`ω` is assumed to be in units of `rad s⁻¹` and `m` is assumed to be in units of
 the atomic mass unit `u`.
+
+Note that conversions from `ω` to SI units should use derived units based on
+`s_ahu` account for the factor of `2π` in the conversion.
 """
 function initahu(ωh::Unitful.Quantity, mh::Unitful.Quantity)
-  @eval @unit ħ_u  "ħ"  ReducedPlanckConstant   Unitful.ħ                       false;
-  @eval @unit ω   "ω"   HarmonicFrequency uconvert(Unitful.rad*Unitful.Hz, $ωh) false;
-  @eval @unit mₕ  "mₕ"  HarmonicMass      uconvert(Unitful.kg, $mh)             false;
-  @eval @unit aₕ  "aₕ"  HarmonicLength    (1ħ_u / (1mₕ * 1ω))^(1/2)             false;
+  # Define base units.
+  @eval @unit ħ_u "ħ"   ReducedPlanckConstant   Unitful.ħ                         false;
+  @eval @unit ω   "ω"   HarmonicFrequency uconvert(Unitful.rad*Unitful.s^-1, $ωh) false;
+  @eval @unit mₕ  "mₕ"  HarmonicMass      uconvert(Unitful.kg, $mh)               false;
+  @eval @unit aₕ  "aₕ"  HarmonicLength    (1ħ_u / (1mₕ * 1ω))^(1/2)               false;
+
+  # Define convenience units for handling radians properly in conversions.
+  @eval @unit s_ahu   "s"   AngularSecond Unitful.s/(2π*Unitful.rad)  true;
+  @eval @unit Hz_ahu  "Hz"  AngularHertz  1/s_ahu                     true;
 
   # Simplify energy units.
   unit = :(ħ_u*ω);
@@ -27,7 +35,9 @@ function initahu(ωh::Unitful.Quantity, mh::Unitful.Quantity)
   # Only register symbols with Unitful when they are all defined.
   Unitful.register(UnitfulAtomicHarmonic);
 end
-initahu(ω::Number, m::Number) = initahu(ω*Unitful.rad*Unitful.Hz, m*Unitful.u);
+# Assume any dimensionless numbers given are in angular frequency and atomic
+# mass units.
+initahu(ω::Number, m::Number) = initahu(ω*Unitful.rad*Unitful.s^-1, m*Unitful.u);
 
 """
   ahunit(x::Unitful.Quantity)
