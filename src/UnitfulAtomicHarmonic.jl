@@ -2,8 +2,11 @@ module UnitfulAtomicHarmonic
 
 import Unitful;
 using Unitful: @unit, Dimension, Dimensions, dimension, Units, NoDims, NoUnits, uconvert, ustrip;
+#import UnitfulAngles;
 
 export ahunit, ahuconvert, ahustrip, initahu;
+
+
 
 """
     initahu(ω::Number, m::Number)
@@ -11,22 +14,27 @@ export ahunit, ahuconvert, ahustrip, initahu;
 
 Finishes the units initialisation by setting the harmonic frequency base unit
 value to `ω` and the mass base unit to `m`. If neither `ω` of `m` have units,
-`ω` is assumed to be in units of `rad s⁻¹` and `m` is assumed to be in units of
-the atomic mass unit `u`.
+`ω` is assumed to be in units of radians per second (`rad s⁻¹`) and `m` is
+assumed to be in units of the atomic mass unit `u`.
 
-Note that conversions from `ω` to SI units should use derived units based on
-`s_ahu` account for the factor of `2π` in the conversion.
+Note that conversions to frequencies should use the `HzTn` unit defined in this
+function if the frequency is to be expressed in terms of cycles per second
+instead of radians per second.
 """
 function initahu(ωh::Unitful.Quantity, mh::Unitful.Quantity)
   # Define base units.
-  @eval @unit ħ_u "ħ"   ReducedPlanckConstant   Unitful.ħ                         false;
-  @eval @unit ω   "ω"   HarmonicFrequency uconvert(Unitful.rad*Unitful.s^-1, $ωh) false;
-  @eval @unit mₕ  "mₕ"  HarmonicMass      uconvert(Unitful.kg, $mh)               false;
-  @eval @unit aₕ  "aₕ"  HarmonicLength    (1ħ_u / (1mₕ * 1ω))^(1/2)               false;
+  @eval @unit ħ_u "ħ"   ReducedPlanckConstant Unitful.ħ*Unitful.rad^-1                false;
+  @eval @unit ω   "ω"   HarmonicFrequency     uconvert(Unitful.rad*Unitful.s^-1, $ωh) false;
+  @eval @unit mₕ  "mₕ"  HarmonicMass          uconvert(Unitful.kg, $mh)               false;
+  @eval @unit aₕ  "aₕ"  HarmonicLength        (1ħ_u / (1mₕ * 1ω))^(1/2)               false;
 
-  # Define convenience units for handling radians properly in conversions.
-  @eval @unit s_ahu   "s"   AngularSecond Unitful.s/(2π*Unitful.rad)  true;
-  @eval @unit Hz_ahu  "Hz"  AngularHertz  1/s_ahu                     true;
+  # Define convenience units to aid conversions to non-angular quantities.
+  @eval @unit τ   "τ"   Turn            2π*Unitful.rad  false;
+  @eval @unit Tₕ  "Tₕ"  HarmonicPeriod  1τ/ω            false;
+
+  # Hertz is usually expressed in terms of turns per second. The default Unitful
+  # definition would make it in terms of radians per second instead.
+  @eval @unit HzTn "Hz"  TurnHertz       1τ/Unitful.s true;
 
   # Simplify energy units.
   unit = :(ħ_u*ω);
@@ -52,7 +60,7 @@ ahunit(x) = ahunit(dimension(x));
 # Harmonic units for each re-defined dimension.
 ahunit(x::Dimension{:Length})  = aₕ^x.power;
 ahunit(x::Dimension{:Mass})    = mₕ^x.power;
-ahunit(x::Dimension{:Time})    = ω^(-x.power);
+ahunit(x::Dimension{:Time})    = Tₕ^x.power;
 
 ahunit(::Dimension{D}) where D = throw(ArgumentError(string(
                                    "no atomic harmonic unit defined for the ",
